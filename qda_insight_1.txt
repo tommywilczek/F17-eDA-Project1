@@ -1,0 +1,9 @@
+QDA insight 1
+
+We tried using Quadratic discriminant analysis on our Breast Cancer dataset to see if we could predict whether a person is alive or dead based on the age of diagnosis and the number of tumors. Suprisingly, It doesn't seem like tumors are a strong predictor, because the group means of tumors for alive and dead are about equal(as you would expect, all people in the dataset are breast cancer patients).
+
+After fitting the model to the data for patients whose first diagnosis happened after their 60th birthday, it was tested on the data for patients who were diagnosed before their 60th birthday. Since the prior probability for alive is .875 for the training set, we would expect that the model would make a high number of correct predictions, since it could just guess that every patient is alive and still have an accuracy of .875. The model had an accuracy of .907, so some improvement was made.
+
+Next we tried using QDA to predict whether a person was living using the number of tumors as the only predictor. Using the same training and test sets, the accuracy of predictions improved to .926.
+
+This increase over the first QDA model might be due to the the training and test sets being split up based on a variable in the model, where in the second this wasn't an issue. 

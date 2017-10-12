@@ -1,0 +1,46 @@
+require(ISLR)
+require(MASS)
+require(boot)
+require(ggplot2)
+require(dplyr)
+devtools::install_github("datadotworld/dwapi-r", build_vignettes = TRUE)
+
+saved_cfg <- data.world::save_config("eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm9kLXVzZXItY2xpZW50Omplbm5pZmVyY2h1bmciLCJpc3MiOiJhZ2VudDpqZW5uaWZlcmNodW5nOjozZTNiMTAzMy1kYzMxLTRmZTAtYTM4NS0yNDFjMjVmNzY2NTUiLCJpYXQiOjE0ODQ2OTcyNDUsInJvbGUiOlsidXNlcl9hcGlfd3JpdGUiLCJ1c2VyX2FwaV9yZWFkIl0sImdlbmVyYWwtcHVycG9zZSI6dHJ1ZX0.wObx6AHihRFAOixo6S51tLFadtGEsOoJNndHSIPajvSdXshuRzzemuLUxuMvU4vSLjWu4g2PesjXPjPqggdRWA")
+data.world::set_config(saved_cfg)
+
+vignette("quickstart", package = "data.world")
+
+require(dplyr)
+require(data.world)
+
+project <- "https://data.world/tommywilczek/f-17-eda-project-2"
+BreastCancerDF <- data.world::query(
+  data.world::qry_sql("SELECT * FROM BreastCancer"),
+  dataset = project
+)
+View(BreastCancerDF)
+summary(BreastCancerDF)
+
+?qda
+
+qda.fit = qda(alive ~ age_at_initial_pathologic_diagnosis + tumor, data = BreastCancerDF, subset = age_at_initial_pathologic_diagnosis > 60)
+qda.fit
+
+qda.class = predict(qda.fit)
+
+BreastCancerDF.less = subset(BreastCancerDF, age_at_initial_pathologic_diagnosis < 60)
+qda.pred=predict(qda.fit,BreastCancerDF.less)
+
+table(qda.pred$class,BreastCancerDF.less$alive)
+mean(qda.pred$class == BreastCancerDF.less$alive)
+
+qda.fit2 = qda(alive ~  tumor, data = BreastCancerDF, subset = age_at_initial_pathologic_diagnosis > 60)
+qda.class2 = predict(qda.fit2)
+
+BreastCancerDF.less = subset(BreastCancerDF, age_at_initial_pathologic_diagnosis < 60)
+qda.pred2=predict(qda.fit2,BreastCancerDF.less)
+
+table(qda.pred2$class,BreastCancerDF.less$alive)
+mean(qda.pred2$class == BreastCancerDF.less$alive)
+
+
