@@ -24,6 +24,7 @@ require(MASS)
 require(boot)
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
 ## **R Session Info**  
 
 ```{r}
@@ -37,7 +38,7 @@ TBD
 ```{r}
 project <- "https://data.world/tommywilczek/f-17-eda-project-2"
 data.world::set_config(cfg_env("DW_API"))
-BreastCancerDF <- data.world::query(data.world::qry_sql("SELECT * FROM BreastCancer"), dataset = project)
+BreastCancerDF <- data.world::query(data.world::qry_sql("SELECT * FROM BreastCancer2"), dataset = project)
 ```
 
 ## **Introduction**
@@ -47,30 +48,29 @@ This is a dataset about Breast Cancer
 
 ### Logistic Regression:
 ```{r}
-
 glm.fitE=glm(er_status~tumor+node,
-            data=BreastCancerDF,family=binomial)
+             data=BreastCancerDF,family=binomial)
 glm.fitP=glm(pr_status~tumor+node,
-            data=BreastCancerDF,family=binomial)
+             data=BreastCancerDF,family=binomial)
 glm.fitH = glm(her2_final_status~tumor+node,data=BreastCancerDF,family=binomial)
 
 summary(glm.fitE)
 glm.probsE=predict(glm.fitE,type="response") 
-glm.predE=ifelse(glm.probs>0.65,1,0)
+glm.predE=ifelse(glm.probsE>0.65,1,0)
 attach(BreastCancerDF)
 table(glm.predE,er_status)
 mean(glm.predE==er_status)
 
 summary(glm.fitP)
 glm.probsP=predict(glm.fitP,type="response") 
-glm.predP=ifelse(glm.probs>0.65,1,0)
+glm.predP=ifelse(glm.probsP>0.65,1,0)
 attach(BreastCancerDF)
 table(glm.predP,pr_status)
 mean(glm.predP==pr_status)
 
 summary(glm.fitH)
 glm.probsH=predict(glm.fitH,type="response") 
-glm.predH=ifelse(glm.probs>0.7,1,0)
+glm.predH=ifelse(glm.probsH>0.7,1,0)
 attach(BreastCancerDF)
 table(glm.predH,her2_final_status)
 mean(glm.predH==her2_final_status)
@@ -111,6 +111,7 @@ renderPlot(ggplot(lda.pred.df) + geom_histogram(mapping = aes(x=LD1)) + facet_wr
 renderPlot(ggplot(lda.pred.df) + geom_boxplot(mapping = aes(x=class, y=LD1)))
 table(lda.pred$class,BreastCancerDF.55$pr_status)
 mean(lda.pred$class==BreastCancerDF.55$pr_status)
+
 ```
 Our group used a Linear Discriminant Analysis model on the dataset called "BreastCancer.csv". Here we are constructing a linear fit model called lda.fit based on if the patient has a PR status or not by using two variables tumor and nodes as the classes, and when the patient is younger than age of 55. PR status means that the patient has breast cancer that is progesterone-rceptor-positve. Running lda.fit, we can understand the coefficients of tumor and node, which are 0.5116279 and 0.4883721. Then we created a bar plot of true and false for the lda.fit.
 
@@ -118,10 +119,34 @@ After creating the linear fit model, we created a subset of the data called Brea
 
 Next, we created a histogram of the predicted LD1 values in the predicted ages above 55. When LD1 is huge, the PR status is true, and when LD1 is low, the PR status is false. We also created a boxplot that creates a threshold, when above the threshold, the PR status is true, and when the threshold is low, the PR status is false. Some interesting thing to point out is the outlier for the lower threshold.
 
-Finally, our group calculated the confusion matrix that calculates the cross-tabulation of the observed and predicted classes, and mean what we predicted correct. From the confusion matrix, the top is the predicted, and the left side are the observed. From the output, we found there were a total of 57 predictions, where we predicted 32 have PS status, and 25 do not have PS status. However, in reality, only 21 had PR status, while 36 did not have PR status. The mean came out to be 0.4561404, which means our group was not that accurate.
+Finally, our group calculated the confusion matrix that calculates the cross-tabulation of the observed and predicted classes, and mean what we predicted correct. From the confusion matrix, the top is the predicted, and the left side are the observed. From the output, we found there were a total of 57 predictions, where we predicted 32 have PS status, and 25 do not have PR status. However, in reality, only 21 had PR status, while 36 did not have PR status. The mean came out to be 0.4561404.
 
-From the data we received through the linear discriminant analysis, we can see that there is somewhat a linear combination between the tumor and node. This allows us to agree that PS status may be affect from the number of tumors and nodes.
+```{r}
+lda.fit2=lda(her2_final_status~tumor + node,data=BreastCancerDF, subset=age_at_initial_pathologic_diagnosis<60)
+lda.fit2
+renderPlot(plot(lda.fit2))
 
+BreastCancerDF.602=subset(BreastCancerDF,age_at_initial_pathologic_diagnosis>60)
+lda.pred2=predict(lda.fit2,BreastCancerDF.602)
+
+#lda.pred2[1:5,]
+class(lda.pred2)
+data.frame(lda.pred2)[1:5,]
+lda.pred2.df = data.frame(lda.pred2)
+
+renderPlot(ggplot(lda.pred2.df) + geom_histogram(mapping = aes(x=LD1)) + facet_wrap(~ class))
+renderPlot(ggplot(lda.pred2.df) + geom_boxplot(mapping = aes(x=class, y=LD1)))
+table(lda.pred2$class,BreastCancerDF.602$her2_final_status)
+mean(lda.pred2$class==BreastCancerDF.602$her2_final_status)
+
+```
+Similar to above, this time our group constructed a linear fit model called lda.fit2 based on if the patient has a HER2 final status or not by using two variables tumor and nodes as the classes, and when the patient is younger than age of 60. Running lda.fit2, the coefficients of tumor and node are -0.7566565 and 1.1202495. Then we created a bar plot of true and false for the lda.fit2.
+
+After creating the linear fit model, we created a subset of the data called BreastCancerDF.602 when the patient is older than the age of 60, and this will predict the ages above 60 if they are either true or false of HER2 final status, and this will be called lda.pred2. Then we tested the model by comparing the 2 the lda.fit2 and BreastCancer. Then we created a data.frame of the lda.pred2 that allows us to see the posteriors of both false, true and the predicted LD1.
+
+Next, we created a histogram of the predicted LD1 values in the predicted ages above 60. When LD1 is huge, the HER2 final status is true, and when LD1 is low, the HER2 final status is false. We also created a boxplot that creates a threshold, when above the threshold, the HER2 final status is true, and when the threshold is low, the HER2 final status is false. From the plots, we can see that majority of the LD1 and class tends to lean towards posterior.0 or false.
+
+From the output of the confusion matrix, we found there were a total of 48 predictions, where we predicted 15 have HER2 final status, and 33 do not have HER2 final status. However, in reality, only 3 had HER2 final status, while 45 did not have PR status. This shows how off our predictions were compared to the actual. The mean came out to be 0.7083333.
 
 ### Quadratic Discriminant Analysis
 ```{r}
@@ -144,6 +169,7 @@ qda.pred2=predict(qda.fit2,BreastCancerDF.less)
 
 table(qda.pred2$class,BreastCancerDF.less$alive)
 mean(qda.pred2$class == BreastCancerDF.less$alive)
+
 ```
 We tried using Quadratic discriminant analysis on our Breast Cancer dataset to see if we could predict whether a person is alive or dead based on the age of diagnosis and the number of tumors. Suprisingly, It doesn't seem like tumors are a strong predictor, because the group means of tumors for alive and dead are about equal(as you would expect, all people in the dataset are breast cancer patients).
 
@@ -178,22 +204,13 @@ mean(knn.pred==alive[!train])
 This model is much more accurate. Here, I examine if the relationship between tumor and node can predict the survival of the patient. This model's accuracy hovers around 95%, making the number of tumors and nodes a very good predictor of the survival of the patient.
 
 ## Inputs and Outputs
-
 You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
 
-
-
 ## Embedded Application
-
 It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
-
-
 
 Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
 
-You can also use the `shinyApp` function to define an application inline rather then in an external directory.
+You can also use the `shinyApp` function to define an application inline rather then in an external directory.  
 
 In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
-
-
-

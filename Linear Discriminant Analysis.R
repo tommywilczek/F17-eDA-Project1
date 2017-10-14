@@ -31,7 +31,7 @@ plot(lda.fit)
 BreastCancerDF.55=subset(BreastCancerDF,age_at_initial_pathologic_diagnosis>55)
 lda.pred=predict(lda.fit,BreastCancerDF.55)
 
-lda.pred[1:5,]
+#lda.pred[1:5,]
 class(lda.pred)
 data.frame(lda.pred)[1:5,]
 lda.pred.df = data.frame(lda.pred)
@@ -40,3 +40,23 @@ ggplot(lda.pred.df) + geom_histogram(mapping = aes(x=LD1)) + facet_wrap(~ class)
 ggplot(lda.pred.df) + geom_boxplot(mapping = aes(x=class, y=LD1))
 table(lda.pred$class,BreastCancerDF.55$pr_status)
 mean(lda.pred$class==BreastCancerDF.55$pr_status)
+
+########################################
+
+lda.fit2=lda(her2_final_status~tumor + node,data=BreastCancerDF, subset=age_at_initial_pathologic_diagnosis<60)
+lda.fit2
+plot(lda.fit2)
+
+BreastCancerDF.602=subset(BreastCancerDF,age_at_initial_pathologic_diagnosis>60)
+lda.pred2=predict(lda.fit2,BreastCancerDF.602)
+
+#lda.pred2[1:5,]
+class(lda.pred2)
+data.frame(lda.pred2)[1:5,]
+lda.pred2.df = data.frame(lda.pred2)
+
+ggplot(lda.pred2.df) + geom_histogram(mapping = aes(x=LD1)) + facet_wrap(~ class)
+ggplot(lda.pred2.df) + geom_boxplot(mapping = aes(x=class, y=LD1))
+table(lda.pred2$class,BreastCancerDF.602$her2_final_status)
+mean(lda.pred2$class==BreastCancerDF.602$her2_final_status)
+
