@@ -1,0 +1,316 @@
+---
+title: "Breast Cancer"
+author: "Team 5: Gregory Arbouzov, Jennifer Chung, Amar Sheth, Thomas Wilczek"
+date: "10/21/2017"
+output:
+  html_notebook:
+    code_folding: hide
+    toc: true
+    toc_depth: 4
+    toc_float: true
+runtime: shiny
+resource_files:
+- .Renviron
+---
+## **R setup info**
+```{r setup, include=FALSE}
+library(data.world)
+library(leaps)
+require(dplyr)
+require(ggplot2)
+require(shiny)
+library(class)
+require(ISLR)
+require(MASS)
+require(boot)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## **R Session Info**  
+
+```{r}
+sessionInfo()
+```
+
+## **Connecting to data.world** 
+```{r}
+project <- "https://data.world/jenniferchung/breast-cancer-dataset"
+data.world::set_config(cfg_env("DW_API"))
+BreastCancerDF <- data.world::query(data.world::qry_sql("SELECT * FROM BreastCancer"), dataset = project)
+```
+
+## **Introduction**
+This is a dataset about Breast Cancer
+
+## **Insights** 
+
+### Logistic Regression:
+```{r}'''
+glm.fitE=glm(er_status~tumor+node,
+             data=BreastCancerDF,family=binomial)
+glm.fitP=glm(pr_status~tumor+node,
+             data=BreastCancerDF,family=binomial)
+glm.fitH = glm(her2_final_status~tumor+node,data=BreastCancerDF,family=binomial)
+
+summary(glm.fitE)
+glm.probsE=predict(glm.fitE,type="response") 
+glm.predE=ifelse(glm.probsE>0.65,1,0)
+attach(BreastCancerDF)
+table(glm.predE,er_status)
+mean(glm.predE==er_status)
+
+summary(glm.fitP)
+glm.probsP=predict(glm.fitP,type="response") 
+glm.predP=ifelse(glm.probsP>0.65,1,0)
+attach(BreastCancerDF)
+table(glm.predP,pr_status)
+mean(glm.predP==pr_status)
+
+summary(glm.fitH)
+glm.probsH=predict(glm.fitH,type="response") 
+glm.predH=ifelse(glm.probsH>0.7,1,0)
+attach(BreastCancerDF)
+table(glm.predH,her2_final_status)
+mean(glm.predH==her2_final_status)
+
+train = os_event<1
+glm.fit=glm(glm.predH~tumor+node,
+            data=BreastCancerDF,family=binomial, subset=train)
+glm.probs=predict(glm.fit,newdata=BreastCancerDF[!train,],type="response") 
+glm.pred=ifelse(glm.probs >0.7,1,0)
+os_event.one=BreastCancerDF$her2_final_status[!train]
+table(glm.pred,os_event.one)
+mean(glm.pred==os_event.one)
+
+```
+In attempting to do logistic regression, we first wanted to find out what part of the data we wanted to use as predictors and what aspects of data would be important or interesting to predict. Estrogen status (er_status), progesterone status (pr_status), and human epidermal growth factor receptor 2 status (her2_final_status) are all interesting things to predict based on tumor phase and node size. 
+
+To run a logistic regression, I had to modify the Boolean variable type to Integer type and thus used a slightly modified version of our data in our data.world account. 
+
+To narrow it down, we tried to run a logistic regression model (glm) on all 3. I adjusted the probability threshold to increase the accuracy of the model. I found that tumor phase and node size had the best prediction for human epidermal growth factor receptor 2 status (her2_final_status) with a mean of 0.63. 
+
+Then I used training data as that for which the os_event was 0 (false) and used it to test it when the os_event was 1 (true). The accuracy of the model was 80%. However, it should be taken with a grain of salt because our data is pretty small and it can introduce variability. 
+
+### Linear Discriminant Analysis:
+Link to data.world: https://data.world/jenniferchung/f-17-eda-project-3/insights?anchor=https%3A%2F%2Fmedia.data.world%2Ft2QYOpFkTBaZhLiGzoUr_image.png&id=561d5387-5374-43b6-9d66-f636b4aff0ba&source=sb
+```{r}
+lda.fit=lda(pr_status~tumor + node,data=BreastCancerDF, subset=age_at_initial_pathologic_diagnosis<55)
+lda.fit
+renderPlot(plot(lda.fit))
+
+BreastCancerDF.55=subset(BreastCancerDF,age_at_initial_pathologic_diagnosis>55)
+lda.pred=predict(lda.fit,BreastCancerDF.55)
+
+#lda.pred[1:5,]
+class(lda.pred)
+data.frame(lda.pred)[1:5,]
+lda.pred.df = data.frame(lda.pred)
+
+renderPlot(ggplot(lda.pred.df) + geom_histogram(mapping = aes(x=LD1)) + facet_wrap(~ class))
+renderPlot(ggplot(lda.pred.df) + geom_boxplot(mapping = aes(x=class, y=LD1)))
+table(lda.pred$class,BreastCancerDF.55$pr_status)
+mean(lda.pred$class==BreastCancerDF.55$pr_status)
+
+```
+Our group used a Linear Discriminant Analysis model on the dataset called "BreastCancer.csv". Here we are constructing a linear fit model called lda.fit based on if the patient has a PR status or not by using two variables tumor and nodes as the classes, and when the patient is younger than age of 55. PR status means that the patient has breast cancer that is progesterone-rceptor-positve. Running lda.fit, we can understand the coefficients of tumor and node, which are 0.5116279 and 0.4883721. Then we created a bar plot of true and false for the lda.fit.
+
+After creating the linear fit model, we created a subset of the data called BreastCancerDF.55 when the patient is older than the age of 55, and this will predict the ages above 55 if they are either true or false of PR status, and this will be called lda.pred. Then we tested the model by comparing the 2 the lda.fit and BreastCancer. Then we created a data.frame of the lda.pred that allows us to see the posteriors of both false, true and the predicted LD1.
+
+Next, we created a histogram of the predicted LD1 values in the predicted ages above 55. When LD1 is huge, the PR status is true, and when LD1 is low, the PR status is false. We also created a boxplot that creates a threshold, when above the threshold, the PR status is true, and when the threshold is low, the PR status is false. Some interesting thing to point out is the outlier for the lower threshold.
+
+Finally, our group calculated the confusion matrix that calculates the cross-tabulation of the observed and predicted classes, and mean what we predicted correct. From the confusion matrix, the top is the predicted, and the left side are the observed. From the output, we found there were a total of 57 predictions, where we predicted 32 have PS status, and 25 do not have PR status. However, in reality, only 21 had PR status, while 36 did not have PR status. The mean came out to be 0.4561404.
+
+Link to data.world: https://data.world/jenniferchung/f-17-eda-project-3/insights?anchor=https%3A%2F%2Fmedia.data.world%2Fx7rc08gdQXWIAw6d0bYO_image.png&id=f2269a95-7878-47f9-bb17-b35c74e1d084&source=sb
+```{r}
+lda.fit2=lda(her2_final_status~tumor + node,data=BreastCancerDF, subset=age_at_initial_pathologic_diagnosis<60)
+lda.fit2
+renderPlot(plot(lda.fit2))
+
+BreastCancerDF.602=subset(BreastCancerDF,age_at_initial_pathologic_diagnosis>60)
+lda.pred2=predict(lda.fit2,BreastCancerDF.602)
+
+#lda.pred2[1:5,]
+class(lda.pred2)
+data.frame(lda.pred2)[1:5,]
+lda.pred2.df = data.frame(lda.pred2)
+
+renderPlot(ggplot(lda.pred2.df) + geom_histogram(mapping = aes(x=LD1)) + facet_wrap(~ class))
+renderPlot(ggplot(lda.pred2.df) + geom_boxplot(mapping = aes(x=class, y=LD1)))
+table(lda.pred2$class,BreastCancerDF.602$her2_final_status)
+mean(lda.pred2$class==BreastCancerDF.602$her2_final_status)
+
+```
+Similar to above, this time our group constructed a linear fit model called lda.fit2 based on if the patient has a HER2 final status or not by using two variables tumor and nodes as the classes, and when the patient is younger than age of 60. Running lda.fit2, the coefficients of tumor and node are -0.7566565 and 1.1202495. Then we created a bar plot of true and false for the lda.fit2.
+
+After creating the linear fit model, we created a subset of the data called BreastCancerDF.602 when the patient is older than the age of 60, and this will predict the ages above 60 if they are either true or false of HER2 final status, and this will be called lda.pred2. Then we tested the model by comparing the 2 the lda.fit2 and BreastCancer. Then we created a data.frame of the lda.pred2 that allows us to see the posteriors of both false, true and the predicted LD1.
+
+Next, we created a histogram of the predicted LD1 values in the predicted ages above 60. When LD1 is huge, the HER2 final status is true, and when LD1 is low, the HER2 final status is false. We also created a boxplot that creates a threshold, when above the threshold, the HER2 final status is true, and when the threshold is low, the HER2 final status is false. From the plots, we can see that majority of the LD1 and class tends to lean towards posterior.0 or false.
+
+From the output of the confusion matrix, we found there were a total of 48 predictions, where we predicted 15 have HER2 final status, and 33 do not have HER2 final status. However, in reality, only 3 had HER2 final status, while 45 did not have PR status. This shows how off our predictions were compared to the actual. The mean came out to be 0.7083333.
+
+### Quadratic Discriminant Analysis
+```{r}
+qda.fit = qda(alive ~ age_at_initial_pathologic_diagnosis + tumor, data = BreastCancerDF, subset = age_at_initial_pathologic_diagnosis > 60)
+qda.fit
+
+qda.class = predict(qda.fit)
+
+BreastCancerDF.less = subset(BreastCancerDF, age_at_initial_pathologic_diagnosis < 60)
+qda.pred=predict(qda.fit,BreastCancerDF.less)
+
+table(qda.pred$class,BreastCancerDF.less$alive)
+mean(qda.pred$class == BreastCancerDF.less$alive)
+
+qda.fit2 = qda(alive ~  tumor, data = BreastCancerDF, subset = age_at_initial_pathologic_diagnosis > 60)
+qda.class2 = predict(qda.fit2)
+
+BreastCancerDF.less = subset(BreastCancerDF, age_at_initial_pathologic_diagnosis < 60)
+qda.pred2=predict(qda.fit2,BreastCancerDF.less)
+
+table(qda.pred2$class,BreastCancerDF.less$alive)
+mean(qda.pred2$class == BreastCancerDF.less$alive)
+
+```
+We tried using Quadratic discriminant analysis on our Breast Cancer dataset to see if we could predict whether a person is alive or dead based on the age of diagnosis and the number of tumors. Suprisingly, It doesn't seem like tumors are a strong predictor, because the group means of tumors for alive and dead are about equal(as you would expect, all people in the dataset are breast cancer patients).
+
+After fitting the model to the data for patients whose first diagnosis happened after their 60th birthday, it was tested on the data for patients who were diagnosed before their 60th birthday. Since the prior probability for alive is .875 for the training set, we would expect that the model would make a high number of correct predictions, since it could just guess that every patient is alive and still have an accuracy of .875. The model had an accuracy of .907, so some improvement was made.
+
+Next we tried using QDA to predict whether a person was living using the number of tumors as the only predictor. Using the same training and test sets, the accuracy of predictions improved to .926.
+
+This increase over the first QDA model might be due to the the training and test sets being split up based on a variable in the model, where in the second this wasn't an issue. 
+
+### K Nearest Neighbor
+```{r}
+attach(BreastCancerDF)
+testSet = cbind(age_at_initial_pathologic_diagnosis,tumor)
+is.even <- function(x) x %% 2 == 0
+train=is.even(age_at_initial_pathologic_diagnosis)
+knn.pred=knn(testSet[train,],testSet[!train,],pr_status[train],k=1)
+table(knn.pred,pr_status[!train])
+mean(knn.pred==pr_status[!train])
+
+```
+In this chunk, I am examining if the relationship between patient's age and their tumor can predict the results of their Progesterone Test. If the test comes back "true", it means that the cancer cells may receive signals from progesterone that could promote their growth. To use K-Nearest Neighbor, I had to separate the data into a train and test set. To do this, I simply (and arbitrarily) made the training data only the people who's age is even. Then, the KNN algorithm tests it's trained model against the data not in "train", which are those who have an odd age. The confusion matrix will return the result that hovers around a 50%, meaning the model predicted the correct Progesterone Test half the time. Since there are only two ways the test can go, it means this model is worthless, and just as good as a coin flip at predicting Progesterone Test results based on age and tumor.
+
+```{r}
+testSet = cbind(node,tumor)
+is.even <- function(x) x %% 2 == 0
+train=is.even(age_at_initial_pathologic_diagnosis)
+knn.pred=knn(testSet[train,],testSet[!train,],alive[train],k=1)
+table(knn.pred,alive[!train])
+mean(knn.pred==alive[!train])
+
+```
+This model is much more accurate. Here, I examine if the relationship between tumor and node can predict the survival of the patient. This model's accuracy hovers around 95%, making the number of tumors and nodes a very good predictor of the survival of the patient.
+
+
+### Resampling - Cross-validation:
+Link to data.world: https://data.world/jenniferchung/f-17-eda-project-3/insights?anchor=https%3A%2F%2Fmedia.data.world%2FhlnCpUbCQsa5U8AeFSKR_image.png&id=fa311f83-50db-4c8d-b93e-130fe53b09c8&source=sb
+
+One method to resampling is cross-validation. We will cross-validate between OS time vs. age at initial pathologic diagnosis from the breast cancer dataset to find an estimate of test error. Here we'll be using the 10-fold cross-validation.
+```{r}
+## LOOCV
+glm.fit=glm(os_time~age_at_initial_pathologic_diagnosis, data=BreastCancerDF)
+cv.glm(BreastCancerDF,glm.fit)$delta
+
+loocv=function(fit){
+  h=lm.influence(fit)$h
+  mean((residuals(fit)/(1-h))^2)
+}
+
+loocv(glm.fit)
+
+cv.error=rep(0,5)
+degree=1:5
+for(d in degree){
+  glm.fit=glm(os_time~poly(age_at_initial_pathologic_diagnosis,d), data=BreastCancerDF)
+  cv.error[d]=loocv(glm.fit)
+}
+renderPlot(plot(degree,cv.error,type="b"))
+
+## 10-fold CV
+cv.error10=rep(0,5)
+for(d in degree){
+  glm.fit=glm(os_time~poly(age_at_initial_pathologic_diagnosis,d), data=BreastCancerDF)
+  cv.error10[d]=cv.glm(BreastCancerDF,glm.fit,K=10)$delta[1]
+}
+renderPlot(plot(degree,cv.error10,type="b",col="red"))
+```
+After finding the 10-fold cross-validation that splits the data into 10 subsets, the graph of the LOOCV and 10-fold CV show a very high mean squared error that's over 400,000, which means the test error is very high. This shows the dataset is not very accurate for the cross-validation.
+
+### Linear Model Selection:
+
+link to data.world: https://media.data.world/gAxMGZvQQCKGEC4H4YEq_regfit.png
+
+link to data.world: https://media.data.world/DLhcmUmsQoqyu1byieIK_cp_var.png
+
+Linear model selection was difficult for this data set because of the high number of categorical variables. The variables that were numeric were discrete, which does not make for favorable linear models. Nontheless, we tried forward stepwise regression and best subset regression to predict overall survival time. In order for this to work, we had to make a dataframe which only contained numerical variables. In our situation, since the number of variables was manageable, there was no obvious reason to favor forward stepwise regression, but the results for stepwise and best subset were identical. The optimized model is made up of four predictors.
+
+```{r}
+regfit.fwd=regsubsets(os_time~.,data=newdata,nvmax=13,method="forward")
+summary(regfit.fwd)
+renderPlot(plot(regfit.fwd,scale="Cp"))
+which.min(summary(regfit.fwd)$cp)
+
+regfit.full=regsubsets(os_time~.,data=newdata)
+summary(regfit.full)
+
+regfit.full=regsubsets(os_time~.,data=newdata, nvmax=13)
+reg.summary=summary(regfit.full)
+names(reg.summary)
+renderPlot(plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp"))
+which.min(reg.summary$cp)
+
+renderPlot(plot(regfit.full,scale="Cp"))
+coef(regfit.full,10)
+```
+
+A linear model containing four predictors gives the minimum cp, those being days_to_date_of_last_contact, cn_clusters, integrated_clusters_with_pam50, and integrated_clusters_unsup_exp. As seen in the graphs, the results for both selection methods were the same.
+
+### Resampling - Bootstrap:
+Link to data.world: https://data.world/jenniferchung/f-17-eda-project-3/insights?anchor=https%3A%2F%2Fmedia.data.world%2FiffngWCTSVqFHSuJepBg_image.png&id=ef8c1dc6-da53-4f2e-a4dd-5354e120abe9&source=sb
+
+Bootstrapping is a method for estimating the sampling distrubtion of an estimator by sampling with the replacement from the original. In this case, we are using the age at initial pathologic diagonsis and OS time to find the estimate obtained from 1,000 boostrap samples.
+```{r}
+alpha=function(x,y){
+  vx=var(x)
+  vy=var(y)
+  cxy=cov(x,y)
+  (vy-cxy)/(vx+vy-2*cxy)
+}
+alpha(BreastCancerDF$age_at_initial_pathologic_diagnosis,BreastCancerDF$os_time)
+
+alpha.fn=function(data, index){
+  with(data[index,],alpha(age_at_initial_pathologic_diagnosis,os_time))
+}
+
+alpha.fn(BreastCancerDF,1:100)
+
+set.seed(1)
+alpha.fn(BreastCancerDF,sample(1:100,100,replace=TRUE))
+
+boot.out=boot(BreastCancerDF,alpha.fn,R=1000)
+boot.out
+renderPlot(plot(boot.out))
+
+statistic <- function(data, index) {
+  lm.fit <- lm(os_time~age_at_initial_pathologic_diagnosis, data=data, subset=index)
+  coef(lm.fit)
+}
+
+statistic(BreastCancerDF, 1:100)
+set.seed(1)
+boot(BreastCancerDF, statistic, 1000)
+
+summary(lm(os_time~age_at_initial_pathologic_diagnosis, data = BreastCancerDF)) 
+
+quad.statistic <- function(data, index) {
+  lm.fit <- lm(os_time~poly(age_at_initial_pathologic_diagnosis,2), data=data, subset=index)
+  coef(lm.fit)
+}
+
+set.seed(1)
+boot(BreastCancerDF, quad.statistic, 1000)
+```
+
+After bootstrapping 1000 samples, from the graph, we can see that bootstrap estimate looks well due to having a low bias and low std. error. However, after adding another observation, the bootstrap statistics changes, where the bias is negative and std. error is very high. This proves the bootstrap method may not work as well for this dataset due to not having a very good correlation between the two classes.
