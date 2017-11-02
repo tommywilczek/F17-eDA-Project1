@@ -1,0 +1,8 @@
+Colon Cancer Dataset:
+  16 Columns 1858 Rows
+  https://raw.githubusercontent.com/vincentarelbundock/Rdatasets/master/csv/survival/colon.csv
+  https://raw.githubusercontent.com/vincentarelbundock/Rdatasets/master/doc/survival/colon.html
+Lung Cancer Dataset:
+  10 Columns, 228 Rows
+  https://raw.githubusercontent.com/vincentarelbundock/Rdatasets/master/csv/survival/cancer.csv
+  https://raw.githubusercontent.com/vincentarelbundock/Rdatasets/master/doc/survival/cancer.html
